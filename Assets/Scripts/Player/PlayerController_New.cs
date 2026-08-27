@@ -1,0 +1,232 @@
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+public class PlayerController_New : MonoBehaviour
+{
+    private CharacterController _characterController;
+    private PlayerInputActions _playerInputActions;
+    private Transform _transform; // cache, transform getter isn't free when hit every frame
+    [SerializeField] private Transform cameraTransform;
+
+    [Header("Movement")]
+    [SerializeField] private float maxMoveSpeed = 5f;     // absolute cap, design-time constant
+    [SerializeField] private float currentSpeed = 5f;     // the "target" speed — change this at runtime (sprint, slow effects, etc.)
+    [SerializeField] private float acceleration = 25f;    // speed gained per second while there's input
+    [SerializeField] private float deceleration = 30f;    // speed lost per second with no input
+    [SerializeField] private float rotateSpeed = 720f;    // degrees/sec, frame-rate independent turning
+
+    [Header("Jump")]
+    [SerializeField] private float jumpHeight = 2f;
+    [SerializeField] private float gravity = -20f;
+    [SerializeField] private float fallGravityMultiplier = 2.2f;   // falling pulls down harder = snappy descent
+    [SerializeField] private float lowJumpMultiplier = 2f;         // released early = cut the jump short
+    [SerializeField] private float terminalVelocity = 25f;
+    [SerializeField] private float coyoteTime = 0.12f;             // grace period after walking off a ledge
+    [SerializeField] private float jumpBufferTime = 0.12f;         // grace period if jump is pressed just before landing
+
+    [Header("Ground Check")]
+    [SerializeField] private Transform groundCheck;
+    [SerializeField] private float groundCheckRadius = 0.25f;
+    [SerializeField] private LayerMask groundLayer;
+
+    // Public accessor for gameplay code (sprint, slow zones, buffs) — clamps so nothing can exceed maxMoveSpeed.
+    public float CurrentSpeed
+    {
+        get => currentSpeed;
+        set => currentSpeed = Mathf.Clamp(value, 0f, maxMoveSpeed);
+    }
+
+    private bool isGrounded;
+    private bool jumpHeld;
+
+    private float smoothedSpeed;   // actual speed applied this frame, eases toward currentSpeed
+    private float coyoteCounter;
+    private float jumpBufferCounter;
+
+    private Vector2 movementInput;
+    private Vector3 currentMoveDir; // last non-zero input direction
+    private float verticalVelocity;
+
+    #region Initialize
+
+    private void Awake()
+    {
+        _characterController = GetComponent<CharacterController>();
+        _transform = transform;
+        _playerInputActions = new PlayerInputActions();
+
+        currentSpeed = Mathf.Min(currentSpeed, maxMoveSpeed);
+    }
+
+    private void OnEnable()
+    {
+        _playerInputActions.Enable();
+
+        _playerInputActions.PlayerInp.Move.performed += OnMove;
+        _playerInputActions.PlayerInp.Move.canceled += OnMove;
+
+        _playerInputActions.PlayerInp.Jump.performed += OnJumpPressed;
+        _playerInputActions.PlayerInp.Jump.canceled += OnJumpReleased;
+    }
+
+    private void OnDisable()
+    {
+        _playerInputActions.PlayerInp.Move.performed -= OnMove;
+        _playerInputActions.PlayerInp.Move.canceled -= OnMove;
+
+        _playerInputActions.PlayerInp.Jump.performed -= OnJumpPressed;
+        _playerInputActions.PlayerInp.Jump.canceled -= OnJumpReleased;
+
+        _playerInputActions.Disable();
+    }
+
+    #endregion
+
+    #region Actions
+
+    private void OnMove(InputAction.CallbackContext context)
+    {
+        movementInput = context.ReadValue<Vector2>();
+    }
+
+    private void OnJumpPressed(InputAction.CallbackContext context)
+    {
+        jumpHeld = true;
+        jumpBufferCounter = jumpBufferTime; // remember the press even if we're not grounded yet
+    }
+
+    private void OnJumpReleased(InputAction.CallbackContext context)
+    {
+        jumpHeld = false;
+    }
+
+    #endregion
+
+    #region Update
+
+    private void Update()
+    {
+        float dt = Time.deltaTime; // read once, reuse
+
+        CheckGround();
+        HandleTimers(dt);
+        HandleJump();
+        HandleMovement(dt);
+        HandleGravity(dt);
+    }
+
+    private void HandleTimers(float dt)
+    {
+        coyoteCounter = isGrounded ? coyoteTime : coyoteCounter - dt;
+        jumpBufferCounter -= dt;
+    }
+
+    private void HandleJump()
+    {
+        if (jumpBufferCounter <= 0f || coyoteCounter <= 0f)
+            return;
+
+        verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+
+        // consume both so we don't double-jump next frame
+        jumpBufferCounter = 0f;
+        coyoteCounter = 0f;
+    }
+
+    private void HandleMovement(float dt)
+    {
+        Vector3 cameraForward = cameraTransform.forward;
+        Vector3 cameraRight = cameraTransform.right;
+
+        cameraForward.y = 0f;
+        cameraRight.y = 0f;
+
+        cameraForward.Normalize();
+        cameraRight.Normalize();
+
+        Vector3 targetDir =
+            cameraForward * movementInput.y +
+            cameraRight * movementInput.x;
+
+        if (targetDir.sqrMagnitude > 1f)
+            targetDir.Normalize();
+
+        float targetSpeed = targetDir.magnitude * currentSpeed;
+
+        float speedRate = targetSpeed > 0.01f
+            ? acceleration
+            : deceleration;
+
+        smoothedSpeed = Mathf.MoveTowards(
+            smoothedSpeed,
+            targetSpeed,
+            speedRate * dt
+        );
+
+        if (targetDir.sqrMagnitude > 0.0001f)
+        {
+            currentMoveDir = targetDir;
+            RotateTowards(currentMoveDir, dt);
+        }
+
+        Vector3 velocity = currentMoveDir * smoothedSpeed;
+        velocity.y = verticalVelocity;
+
+        _characterController.Move(velocity * dt);
+    }
+
+    private void HandleGravity(float dt)
+    {
+        if (isGrounded && verticalVelocity < 0f)
+        {
+            verticalVelocity = -2f;
+            return;
+        }
+
+        // asymmetric gravity: normal rise, heavier fall = responsive arc
+        float multiplier = 1f;
+        if (verticalVelocity < 0f)
+            multiplier = fallGravityMultiplier;
+        else if (verticalVelocity > 0f && !jumpHeld)
+            multiplier = lowJumpMultiplier; // tap jump = short hop
+
+        verticalVelocity += gravity * multiplier * dt;
+        verticalVelocity = Mathf.Max(verticalVelocity, -terminalVelocity);
+    }
+
+    private void RotateTowards(Vector3 direction, float dt)
+    {
+        Quaternion targetRotation = Quaternion.LookRotation(direction);
+
+        _transform.rotation = Quaternion.RotateTowards(
+            _transform.rotation,
+            targetRotation,
+            rotateSpeed * dt
+        );
+    }
+
+    private void CheckGround()
+    {
+        isGrounded = Physics.CheckSphere(
+            groundCheck.position,
+            groundCheckRadius,
+            groundLayer,
+            QueryTriggerInteraction.Ignore
+        );
+    }
+
+    #endregion
+
+    #region Debug
+
+    private void OnDrawGizmosSelected()
+    {
+        if (groundCheck == null)
+            return;
+
+        Gizmos.color = isGrounded ? Color.green : Color.red;
+        Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
+    }
+
+    #endregion
+}
