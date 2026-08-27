@@ -4,6 +4,7 @@ using UnityEngine;
 public class SpiderSwing : MonoBehaviour
 {
     public NetworkPlayer networkPlayer;
+    private Animator _animator;
     private ColyseusClient colyseusClient;
     
     [Header("Swing Shape")]
@@ -30,6 +31,7 @@ public class SpiderSwing : MonoBehaviour
         _player = GetComponent<PlayerController_New>();
         _characterController = GetComponent<CharacterController>();
         colyseusClient = FindFirstObjectByType<ColyseusClient>();
+        _animator = GetComponent<Animator>();
 
         _transform = transform;
 
@@ -88,7 +90,7 @@ public class SpiderSwing : MonoBehaviour
         ApplySwingAtT(t);
         UpdateWebLine();
         
-        colyseusClient.SendMovement(
+        colyseusClient?.SendMovement(
             transform.position,
             transform.eulerAngles
         );
@@ -96,6 +98,7 @@ public class SpiderSwing : MonoBehaviour
 
     private void StartSwing()
     {
+        _animator.SetBool("Swing", true);
         isSwinging = true;
         swingTimer = 0f;
         swingStartPos = _transform.position;
@@ -114,6 +117,8 @@ public class SpiderSwing : MonoBehaviour
 
     private void BreakSwing()
     {
+        _animator.SetBool("Swing", false);
+
         float t = Mathf.Clamp01(swingTimer / swingDuration);
         float verticalVelocity = swingDipHeight * (Mathf.PI * 0.5f) / swingDuration * Mathf.Sin(t * Mathf.PI * 0.5f);
 
@@ -122,6 +127,8 @@ public class SpiderSwing : MonoBehaviour
 
     private void EndSwing(float exitVerticalVelocity = 0f)
     {
+        _animator.SetBool("Swing", false);
+
         isSwinging = false;
         _player.IsExternallyControlled = false;
         _player.SetVerticalVelocity(exitVerticalVelocity);

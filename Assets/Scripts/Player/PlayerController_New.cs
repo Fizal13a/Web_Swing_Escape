@@ -7,6 +7,7 @@ public class PlayerController_New : MonoBehaviour
     private CharacterController _characterController;
     private PlayerInputActions _playerInputActions;
     private Transform _transform;
+    private Animator _animator;
     [SerializeField] private Transform cameraTransform;
     
     [Header("Network")]
@@ -51,6 +52,7 @@ public class PlayerController_New : MonoBehaviour
 
     private bool isGrounded;
     private bool jumpHeld;
+    private bool isMoving = false;
 
     private float smoothedSpeed;   
     private float coyoteCounter;
@@ -67,6 +69,7 @@ public class PlayerController_New : MonoBehaviour
         _characterController = GetComponent<CharacterController>();
         _transform = transform;
         _playerInputActions = new PlayerInputActions();
+        _animator = GetComponent<Animator>();
         colyseusClient = FindFirstObjectByType<ColyseusClient>();
 
         currentSpeed = Mathf.Min(currentSpeed, maxMoveSpeed);
@@ -104,6 +107,9 @@ public class PlayerController_New : MonoBehaviour
             return;
         
         movementInput = context.ReadValue<Vector2>();
+        isMoving = movementInput.sqrMagnitude > 0;
+        
+        _animator.SetBool("Run", isMoving);
     }
 
     private void OnJumpPressed(InputAction.CallbackContext context)
@@ -210,7 +216,7 @@ public class PlayerController_New : MonoBehaviour
 
         _characterController.Move(velocity * dt);
         
-        colyseusClient.SendMovement(
+        colyseusClient?.SendMovement(
             transform.position,
             transform.eulerAngles
         );
@@ -254,6 +260,15 @@ public class PlayerController_New : MonoBehaviour
             groundLayer,
             QueryTriggerInteraction.Ignore
         );
+
+        if (isGrounded)
+        {
+            _animator.SetBool("Air", false);
+        }
+        else
+        {
+            _animator.SetBool("Air", true);
+        }
     }
 
     #endregion
