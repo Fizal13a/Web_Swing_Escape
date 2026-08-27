@@ -4,15 +4,14 @@ using UnityEngine;
 public class SpiderSwing : MonoBehaviour
 {
     [Header("Swing Shape")]
-    [SerializeField] private float swingDuration = 1f;    
-    [SerializeField] private float swingDistance = 8f;    
-    [SerializeField] private float swingDipHeight = 2.5f; 
-    [SerializeField] private float startLiftHeight = 1f;  
+    [SerializeField] private float swingDuration = 1f;
+    [SerializeField] private float swingDistance = 8f;
+    [SerializeField] private float swingDipHeight = 2.5f;
 
     [Header("Web Visual")]
-    [SerializeField] private LineRenderer webLine;    
-    [SerializeField] private Transform webOrigin;    
-    [SerializeField] private float webHeight = 15f;  
+    [SerializeField] private LineRenderer webLine;
+    [SerializeField] private Transform webOrigin;
+    [SerializeField] private float webHeight = 15f;
 
     private PlayerController_New _player;
     private CharacterController _characterController;
@@ -73,8 +72,7 @@ public class SpiderSwing : MonoBehaviour
 
         if (t >= 1f)
         {
-            // snap to the exact end point, then release
-            MoveTo(swingStartPos + swingDirection * swingDistance);
+            ApplySwingAtT(1f);
             EndSwing();
             return;
         }
@@ -87,9 +85,6 @@ public class SpiderSwing : MonoBehaviour
     {
         isSwinging = true;
         swingTimer = 0f;
-
-        // hop up first so the "U" dip has room to sag without clipping into the ground
-        MoveTo(_transform.position + Vector3.up * startLiftHeight);
         swingStartPos = _transform.position;
 
         Vector3 facing = _transform.forward;
@@ -107,7 +102,7 @@ public class SpiderSwing : MonoBehaviour
     private void BreakSwing()
     {
         float t = Mathf.Clamp01(swingTimer / swingDuration);
-        float verticalVelocity = -swingDipHeight * Mathf.PI / swingDuration * Mathf.Cos(Mathf.PI * t);
+        float verticalVelocity = swingDipHeight * (Mathf.PI * 0.5f) / swingDuration * Mathf.Sin(t * Mathf.PI * 0.5f);
 
         EndSwing(verticalVelocity);
     }
@@ -134,12 +129,8 @@ public class SpiderSwing : MonoBehaviour
 
     private void ApplySwingAtT(float t)
     {
-        // horizontal: straight line in the facing direction
         Vector3 horizontal = swingStartPos + swingDirection * (swingDistance * t);
-
-        // vertical: "U" shape — 0 at start, -dipHeight at the middle, back to 0 at the end
-        float verticalOffset = -swingDipHeight * Mathf.Sin(Mathf.PI * t);
-
+        float verticalOffset = swingDipHeight * (1f - Mathf.Cos(t * Mathf.PI * 0.5f));
         Vector3 target = horizontal + Vector3.up * verticalOffset;
         MoveTo(target);
     }
