@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -5,46 +6,54 @@ public class PlayerController_New : MonoBehaviour
 {
     private CharacterController _characterController;
     private PlayerInputActions _playerInputActions;
-    private Transform _transform; // cache, transform getter isn't free when hit every frame
+    private Transform _transform;
     [SerializeField] private Transform cameraTransform;
 
     [Header("Movement")]
-    [SerializeField] private float maxMoveSpeed = 5f;     // absolute cap, design-time constant
-    [SerializeField] private float currentSpeed = 5f;     // the "target" speed — change this at runtime (sprint, slow effects, etc.)
-    [SerializeField] private float acceleration = 25f;    // speed gained per second while there's input
-    [SerializeField] private float deceleration = 30f;    // speed lost per second with no input
-    [SerializeField] private float rotateSpeed = 720f;    // degrees/sec, frame-rate independent turning
+    [SerializeField] private float maxMoveSpeed = 5f;   
+    [SerializeField] private float currentSpeed = 5f;   
+    [SerializeField] private float acceleration = 25f;  
+    [SerializeField] private float deceleration = 30f;  
+    [SerializeField] private float rotateSpeed = 720f;  
 
     [Header("Jump")]
     [SerializeField] private float jumpHeight = 2f;
     [SerializeField] private float gravity = -20f;
-    [SerializeField] private float fallGravityMultiplier = 2.2f;   // falling pulls down harder = snappy descent
-    [SerializeField] private float lowJumpMultiplier = 2f;         // released early = cut the jump short
+    [SerializeField] private float fallGravityMultiplier = 2.2f;  
+    [SerializeField] private float lowJumpMultiplier = 2f;        
     [SerializeField] private float terminalVelocity = 25f;
-    [SerializeField] private float coyoteTime = 0.12f;             // grace period after walking off a ledge
-    [SerializeField] private float jumpBufferTime = 0.12f;         // grace period if jump is pressed just before landing
+    [SerializeField] private float coyoteTime = 0.12f;            
+    [SerializeField] private float jumpBufferTime = 0.12f;        
 
     [Header("Ground Check")]
     [SerializeField] private Transform groundCheck;
     [SerializeField] private float groundCheckRadius = 0.25f;
     [SerializeField] private LayerMask groundLayer;
 
-    // Public accessor for gameplay code (sprint, slow zones, buffs) — clamps so nothing can exceed maxMoveSpeed.
     public float CurrentSpeed
     {
         get => currentSpeed;
         set => currentSpeed = Mathf.Clamp(value, 0f, maxMoveSpeed);
     }
+    public bool IsGrounded => isGrounded;
+
+    // While true, this script's Update does nothing — SpiderSwing owns the CharacterController.
+    public bool IsExternallyControlled { get; set; }
+    public event Action JumpPressedWhileAirborne;
+
+    // Lets an external controller (SpiderSwing) hand back a vertical speed when it releases control,
+    // so gravity picks up smoothly instead of snapping to 0.
+    public void SetVerticalVelocity(float v) => verticalVelocity = v;
 
     private bool isGrounded;
     private bool jumpHeld;
 
-    private float smoothedSpeed;   // actual speed applied this frame, eases toward currentSpeed
+    private float smoothedSpeed;   
     private float coyoteCounter;
     private float jumpBufferCounter;
 
     private Vector2 movementInput;
-    private Vector3 currentMoveDir; // last non-zero input direction
+    private Vector3 currentMoveDir;
     private float verticalVelocity;
 
     #region Initialize
@@ -92,6 +101,13 @@ public class PlayerController_New : MonoBehaviour
     private void OnJumpPressed(InputAction.CallbackContext context)
     {
         jumpHeld = true;
+
+        if (!isGrounded)
+        {
+            JumpPressedWhileAirborne?.Invoke();
+            return;
+        }
+
         jumpBufferCounter = jumpBufferTime; // remember the press even if we're not grounded yet
     }
 
@@ -106,7 +122,10 @@ public class PlayerController_New : MonoBehaviour
 
     private void Update()
     {
-        float dt = Time.deltaTime; // read once, reuse
+        if (IsExternallyControlled)
+            return; // SpiderSwing is driving the CharacterController this frame
+
+        float dt = Time.deltaTime;
 
         CheckGround();
         HandleTimers(dt);
