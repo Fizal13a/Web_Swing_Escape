@@ -44,12 +44,17 @@ public class ColyseusClient : MonoBehaviour
                 Debug.Log("Player spawned: " + sessionId);
 
                 GameObject playerObject = Instantiate(playerPrefab);
+
                 NetworkPlayer networkPlayer = playerObject.GetComponent<NetworkPlayer>();
                 networkPlayer.Initialize(sessionId, room.SessionId);
+
                 bool isOwner = networkPlayer.IsOwner;
                 players[sessionId] = playerObject;
 
-                playerObject.transform.position = new Vector3(
+                Transform playerTransform =
+                    playerObject.GetComponentInChildren<PlayerController_New>().transform;
+
+                playerTransform.position = new Vector3(
                     player.x,
                     player.y,
                     player.z
@@ -59,29 +64,44 @@ public class ColyseusClient : MonoBehaviour
                 {
                     callbacks.Listen(player, p => p.x, (value, previous) =>
                     {
-                        playerObject.transform.position = new Vector3(
-                            value,
-                            playerObject.transform.position.y,
-                            playerObject.transform.position.z
-                        );
+                        Vector3 position = playerTransform.position;
+                        position.x = value;
+                        playerTransform.position = position;
                     });
 
                     callbacks.Listen(player, p => p.y, (value, previous) =>
                     {
-                        playerObject.transform.position = new Vector3(
-                            playerObject.transform.position.x,
-                            value,
-                            playerObject.transform.position.z
-                        );
+                        Vector3 position = playerTransform.position;
+                        position.y = value;
+                        playerTransform.position = position;
                     });
 
                     callbacks.Listen(player, p => p.z, (value, previous) =>
                     {
-                        playerObject.transform.position = new Vector3(
-                            playerObject.transform.position.x,
-                            playerObject.transform.position.y,
-                            value
-                        );
+                        Vector3 position = playerTransform.position;
+                        position.z = value;
+                        playerTransform.position = position;
+                    });
+
+                    callbacks.Listen(player, p => p.rotX, (value, previous) =>
+                    {
+                        Vector3 rotation = playerTransform.eulerAngles;
+                        rotation.x = value;
+                        playerTransform.eulerAngles = rotation;
+                    });
+
+                    callbacks.Listen(player, p => p.rotY, (value, previous) =>
+                    {
+                        Vector3 rotation = playerTransform.eulerAngles;
+                        rotation.y = value;
+                        playerTransform.eulerAngles = rotation;
+                    });
+
+                    callbacks.Listen(player, p => p.rotZ, (value, previous) =>
+                    {
+                        Vector3 rotation = playerTransform.eulerAngles;
+                        rotation.z = value;
+                        playerTransform.eulerAngles = rotation;
                     });
                 }
             }

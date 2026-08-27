@@ -4,6 +4,8 @@ using Random = UnityEngine.Random;
 
 public class PlayerStepTracker : MonoBehaviour
 {
+    public NetworkPlayer networkPlayer;
+    
     [SerializeField] private LevelProgressionData levelData;
     [SerializeField] private StepPopupController popupController;
 
@@ -42,6 +44,9 @@ public class PlayerStepTracker : MonoBehaviour
 
     private void Update()
     {
+        if (!networkPlayer.IsOwner)
+            return;
+        
         CheckSteps();
     }
 

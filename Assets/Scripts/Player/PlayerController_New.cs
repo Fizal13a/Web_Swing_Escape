@@ -8,6 +8,10 @@ public class PlayerController_New : MonoBehaviour
     private PlayerInputActions _playerInputActions;
     private Transform _transform;
     [SerializeField] private Transform cameraTransform;
+    
+    [Header("Network")]
+    public NetworkPlayer networkPlayer;
+    private ColyseusClient colyseusClient;
 
     [Header("Movement")]
     [SerializeField] private float maxMoveSpeed = 5f;   
@@ -63,6 +67,7 @@ public class PlayerController_New : MonoBehaviour
         _characterController = GetComponent<CharacterController>();
         _transform = transform;
         _playerInputActions = new PlayerInputActions();
+        colyseusClient = FindFirstObjectByType<ColyseusClient>();
 
         currentSpeed = Mathf.Min(currentSpeed, maxMoveSpeed);
     }
@@ -95,11 +100,17 @@ public class PlayerController_New : MonoBehaviour
 
     private void OnMove(InputAction.CallbackContext context)
     {
+        if (!networkPlayer.IsOwner)
+            return;
+        
         movementInput = context.ReadValue<Vector2>();
     }
 
     private void OnJumpPressed(InputAction.CallbackContext context)
     {
+        if (!networkPlayer.IsOwner)
+            return;
+        
         jumpHeld = true;
 
         if (!isGrounded)
@@ -113,6 +124,9 @@ public class PlayerController_New : MonoBehaviour
 
     private void OnJumpReleased(InputAction.CallbackContext context)
     {
+        if (!networkPlayer.IsOwner)
+            return;
+        
         jumpHeld = false;
     }
 
@@ -122,6 +136,9 @@ public class PlayerController_New : MonoBehaviour
 
     private void Update()
     {
+        if (!networkPlayer.IsOwner)
+            return;
+        
         if (IsExternallyControlled)
             return; // SpiderSwing is driving the CharacterController this frame
 
@@ -192,6 +209,11 @@ public class PlayerController_New : MonoBehaviour
         velocity.y = verticalVelocity;
 
         _characterController.Move(velocity * dt);
+        
+        colyseusClient.SendMovement(
+            transform.position,
+            transform.eulerAngles
+        );
     }
 
     private void HandleGravity(float dt)

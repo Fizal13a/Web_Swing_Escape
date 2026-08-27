@@ -4,6 +4,8 @@ using UnityEngine.InputSystem;
 
 public sealed class ThirdPersonCamera : MonoBehaviour
 {
+    public NetworkPlayer networkPlayer;
+    
     [Header("References")]
     [SerializeField] private Transform target;
 
@@ -31,6 +33,11 @@ public sealed class ThirdPersonCamera : MonoBehaviour
 
     private void Start()
     {
+        if (!networkPlayer.IsOwner)
+        {
+            gameObject.SetActive(false);
+        }
+        
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
     }

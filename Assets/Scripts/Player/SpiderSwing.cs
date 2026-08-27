@@ -3,6 +3,9 @@ using UnityEngine;
 [RequireComponent(typeof(CharacterController))]
 public class SpiderSwing : MonoBehaviour
 {
+    public NetworkPlayer networkPlayer;
+    private ColyseusClient colyseusClient;
+    
     [Header("Swing Shape")]
     [SerializeField] private float swingDuration = 1f;
     [SerializeField] private float swingDistance = 8f;
@@ -26,6 +29,8 @@ public class SpiderSwing : MonoBehaviour
     {
         _player = GetComponent<PlayerController_New>();
         _characterController = GetComponent<CharacterController>();
+        colyseusClient = FindFirstObjectByType<ColyseusClient>();
+
         _transform = transform;
 
         if (webOrigin == null)
@@ -64,6 +69,9 @@ public class SpiderSwing : MonoBehaviour
 
     private void Update()
     {
+        if (!networkPlayer.IsOwner)
+            return;
+        
         if (!isSwinging)
             return;
 
@@ -79,6 +87,11 @@ public class SpiderSwing : MonoBehaviour
 
         ApplySwingAtT(t);
         UpdateWebLine();
+        
+        colyseusClient.SendMovement(
+            transform.position,
+            transform.eulerAngles
+        );
     }
 
     private void StartSwing()

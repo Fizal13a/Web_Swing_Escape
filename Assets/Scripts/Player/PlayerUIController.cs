@@ -4,6 +4,8 @@ using TMPro;
 
 public class PlayerUIController : MonoBehaviour
 {
+    public NetworkPlayer networkPlayer;
+    
     [SerializeField] private PlayerStepTracker stepTracker;
 
     [SerializeField] private Image levelBar;
@@ -24,6 +26,11 @@ public class PlayerUIController : MonoBehaviour
 
     private void Start()
     {
+        if (!networkPlayer.IsOwner)
+        {
+            gameObject.SetActive(false);
+        }
+        
         levelBar.fillAmount = 0f;
         stepText.text = "0 / 0";
     }
