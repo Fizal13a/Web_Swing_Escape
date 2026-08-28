@@ -9,6 +9,8 @@ public class ColyseusClient : MonoBehaviour
     private Client client;
     private Room<MyRoomState> room;
 
+    public Camera playerCamera;
+    public ThirdPersonCamera cameraController;
     [SerializeField]
     private GameObject playerPrefab;
 
@@ -47,12 +49,24 @@ public class ColyseusClient : MonoBehaviour
 
                 NetworkPlayer networkPlayer = playerObject.GetComponent<NetworkPlayer>();
                 networkPlayer.Initialize(sessionId, room.SessionId);
+                
+                PlayerController_New playerControllerNew =
+                    playerObject.GetComponentInChildren<PlayerController_New>();
 
                 bool isOwner = networkPlayer.IsOwner;
                 players[sessionId] = playerObject;
 
+                if (isOwner)
+                {
+                    cameraController.SetPlayerTarget(playerControllerNew.transform);
+                    playerControllerNew.SetCameraTransform(playerCamera);
+                }
+
                 Transform playerTransform =
                     playerObject.GetComponentInChildren<PlayerController_New>().transform;
+                
+                PlayerAnimationController animationController =
+                    playerObject.GetComponentInChildren<PlayerAnimationController>();
 
                 playerTransform.position = new Vector3(
                     player.x,
@@ -103,12 +117,26 @@ public class ColyseusClient : MonoBehaviour
                         rotation.z = value;
                         playerTransform.eulerAngles = rotation;
                     });
+                    
+                    callbacks.Listen(player, p => p.animationState, (value, previous) =>
+                    {
+                        animationController.SetNetworkAnimationState((int)value);
+                    });
+                    
+                    callbacks.Listen(player, p => p.animationSpeed, (value, previous) =>
+                    {
+                        animationController.SetAnimationSpeed(value);
+                    });
                 }
             }
         );
     }
     
-    public async void SendMovement(Vector3 position, Vector3 rotation)
+    public async void SendMovement(
+        Vector3 position,
+        Vector3 rotation,
+        int animationState,
+        float animationSpeed)
     {
         if (room == null)
             return;
@@ -121,7 +149,10 @@ public class ColyseusClient : MonoBehaviour
 
             rotX = rotation.x,
             rotY = rotation.y,
-            rotZ = rotation.z
+            rotZ = rotation.z,
+
+            animationState = animationState,
+            animationSpeed = animationSpeed
         });
     }
 

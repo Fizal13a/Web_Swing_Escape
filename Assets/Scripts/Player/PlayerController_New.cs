@@ -6,8 +6,10 @@ public class PlayerController_New : MonoBehaviour
 {
     private CharacterController _characterController;
     private PlayerInputActions _playerInputActions;
+    public PlayerUIController _playerUIController;
+    public StepPopupController _stepPopupController;
     private Transform _transform;
-    private Animator _animator;
+    [SerializeField] private PlayerAnimationController animationController;
     [SerializeField] private Transform cameraTransform;
     
     [Header("Network")]
@@ -20,6 +22,7 @@ public class PlayerController_New : MonoBehaviour
     [SerializeField] private float acceleration = 25f;  
     [SerializeField] private float deceleration = 30f;  
     [SerializeField] private float rotateSpeed = 720f;  
+    [SerializeField] private float animationReferenceSpeed = 5f;
 
     [Header("Jump")]
     [SerializeField] private float jumpHeight = 2f;
@@ -28,12 +31,19 @@ public class PlayerController_New : MonoBehaviour
     [SerializeField] private float lowJumpMultiplier = 2f;        
     [SerializeField] private float terminalVelocity = 25f;
     [SerializeField] private float coyoteTime = 0.12f;            
-    [SerializeField] private float jumpBufferTime = 0.12f;        
+    [SerializeField] private float jumpBufferTime = 0.12f;
+
+    [Header("Swing")] 
+    private int maxSwings = 4;
+    private int currentSwings = 0;
 
     [Header("Ground Check")]
     [SerializeField] private Transform groundCheck;
     [SerializeField] private float groundCheckRadius = 0.25f;
     [SerializeField] private LayerMask groundLayer;
+    
+    [Header("Stats")]
+    private int trophyCount;
 
     public float CurrentSpeed
     {
@@ -53,6 +63,7 @@ public class PlayerController_New : MonoBehaviour
     private bool isGrounded;
     private bool jumpHeld;
     private bool isMoving = false;
+    private bool onTreadmill;
 
     private float smoothedSpeed;   
     private float coyoteCounter;
@@ -69,10 +80,10 @@ public class PlayerController_New : MonoBehaviour
         _characterController = GetComponent<CharacterController>();
         _transform = transform;
         _playerInputActions = new PlayerInputActions();
-        _animator = GetComponent<Animator>();
         colyseusClient = FindFirstObjectByType<ColyseusClient>();
 
         currentSpeed = Mathf.Min(currentSpeed, maxMoveSpeed);
+        currentSwings = maxSwings;
     }
 
     private void OnEnable()
@@ -109,7 +120,10 @@ public class PlayerController_New : MonoBehaviour
         movementInput = context.ReadValue<Vector2>();
         isMoving = movementInput.sqrMagnitude > 0;
         
-        _animator.SetBool("Run", isMoving);
+        if (!onTreadmill)
+            animationController.SetRun(isMoving);
+        else
+            animationController.SetRun(true);
     }
 
     private void OnJumpPressed(InputAction.CallbackContext context)
@@ -119,9 +133,12 @@ public class PlayerController_New : MonoBehaviour
         
         jumpHeld = true;
 
-        if (!isGrounded)
+        if (!isGrounded && currentSwings > 0)
         {
+            currentSwings -= 1;
             JumpPressedWhileAirborne?.Invoke();
+            _playerUIController.ToggleSwingText(true);
+            _playerUIController.OnSwing(currentSwings, maxSwings);
             return;
         }
 
@@ -134,6 +151,22 @@ public class PlayerController_New : MonoBehaviour
             return;
         
         jumpHeld = false;
+    }
+    
+    public void SetTreadmillState(bool value)
+    {
+        onTreadmill = value;
+        
+        animationController.SetRun(value);
+        
+    }
+
+    public void OnLevelUp(int speedIncrement)
+    {
+        maxMoveSpeed += speedIncrement;
+        currentSpeed = maxMoveSpeed;
+        
+        _playerUIController.OnMaxSpeedChanged((int)maxMoveSpeed);
     }
 
     #endregion
@@ -177,6 +210,8 @@ public class PlayerController_New : MonoBehaviour
 
     private void HandleMovement(float dt)
     {
+        if(cameraTransform == null) return;
+        
         Vector3 cameraForward = cameraTransform.forward;
         Vector3 cameraRight = cameraTransform.right;
 
@@ -215,10 +250,20 @@ public class PlayerController_New : MonoBehaviour
         velocity.y = verticalVelocity;
 
         _characterController.Move(velocity * dt);
+
+        // Animation speed based on actual movement speed
+        float animationSpeed = smoothedSpeed / animationReferenceSpeed;
+
+        if (onTreadmill)
+            animationSpeed = 1;
+
+        animationController.SetRunSpeed(animationSpeed);
         
         colyseusClient?.SendMovement(
             transform.position,
-            transform.eulerAngles
+            transform.eulerAngles,
+            animationController.CurrentAnimationState,
+            animationController.CurrentAnimationSpeed
         );
     }
 
@@ -263,15 +308,56 @@ public class PlayerController_New : MonoBehaviour
 
         if (isGrounded)
         {
-            _animator.SetBool("Air", false);
+            animationController.SetAir(false);
+
+            currentSwings = maxSwings;
+            _playerUIController.ToggleSwingText(false);
         }
         else
         {
-            _animator.SetBool("Air", true);
+            animationController.SetAir(true);
         }
     }
 
     #endregion
+    
+    public void TeleportTo(Vector3 position)
+    {
+        CharacterController controller = GetComponent<CharacterController>();
+
+        controller.enabled = false;
+
+        transform.position = position;
+
+        controller.enabled = true;
+    }
+
+    public float GetMaxSpeed()
+    {
+        return maxMoveSpeed;
+    }
+
+    public void SetCurrentSpeed(int speed)
+    {
+        currentSpeed = speed;
+    }
+
+    public int GetTrophyCount()
+    {
+        return trophyCount;
+    }
+
+    public void SetTrophyCount(int count)
+    {
+        trophyCount += count;
+        _playerUIController.OnTrophyCountChanged(trophyCount);
+    }
+
+    public void SetCameraTransform(Camera cameraTransform)
+    {
+        this.cameraTransform = cameraTransform.transform;
+        _stepPopupController.SetCamera(cameraTransform);
+    }
 
     #region Debug
 

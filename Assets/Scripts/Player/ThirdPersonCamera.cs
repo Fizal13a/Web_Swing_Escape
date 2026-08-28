@@ -1,17 +1,13 @@
-using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public sealed class ThirdPersonCamera : MonoBehaviour
 {
-    public NetworkPlayer networkPlayer;
-    
     [Header("References")]
     [SerializeField] private Transform target;
 
     [Header("Camera")]
     [SerializeField] private float distance = 7f;
-    [SerializeField] private float height = 3f;
     [SerializeField] private float lookHeight = 1.5f;
     [SerializeField] private float mouseSensitivity = 0.15f;
 
@@ -25,21 +21,16 @@ public sealed class ThirdPersonCamera : MonoBehaviour
     private float _pitch;
 
     private Vector2 _lookInput;
+    private bool _isLooking;
 
     private void Awake()
     {
         _inputActions = new PlayerInputActions();
     }
 
-    private void Start()
+    public void SetPlayerTarget(Transform target)
     {
-        if (!networkPlayer.IsOwner)
-        {
-            gameObject.SetActive(false);
-        }
-        
-        Cursor.visible = false;
-        Cursor.lockState = CursorLockMode.Locked;
+        this.target = target;
     }
 
     private void OnEnable()
@@ -48,12 +39,18 @@ public sealed class ThirdPersonCamera : MonoBehaviour
 
         _inputActions.PlayerInp.Look.performed += OnLook;
         _inputActions.PlayerInp.Look.canceled += OnLook;
+
+        _inputActions.PlayerInp.LookClick.performed += OnLookPressed;
+        _inputActions.PlayerInp.LookClick.canceled += OnLookReleased;
     }
 
     private void OnDisable()
     {
         _inputActions.PlayerInp.Look.performed -= OnLook;
         _inputActions.PlayerInp.Look.canceled -= OnLook;
+
+        _inputActions.PlayerInp.LookClick.performed -= OnLookPressed;
+        _inputActions.PlayerInp.LookClick.canceled -= OnLookReleased;
 
         _inputActions.Disable();
     }
@@ -63,17 +60,28 @@ public sealed class ThirdPersonCamera : MonoBehaviour
         if (target == null)
             return;
 
-        _yaw += _lookInput.x * mouseSensitivity;
-        _pitch -= _lookInput.y * mouseSensitivity;
+        if (_isLooking)
+        {
+            _yaw += _lookInput.x * mouseSensitivity;
+            _pitch -= _lookInput.y * mouseSensitivity;
 
-        _pitch = Mathf.Clamp(_pitch, minPitch, maxPitch);
+            _pitch = Mathf.Clamp(
+                _pitch,
+                minPitch,
+                maxPitch
+            );
+        }
 
-        Quaternion rotation = Quaternion.Euler(_pitch, _yaw, 0f);
+        Quaternion rotation =
+            Quaternion.Euler(_pitch, _yaw, 0f);
 
-        Vector3 targetPosition = target.position + Vector3.up * lookHeight;
+        Vector3 targetPosition =
+            target.position +
+            Vector3.up * lookHeight;
 
         transform.SetPositionAndRotation(
-            targetPosition - rotation * Vector3.forward * distance,
+            targetPosition -
+            rotation * Vector3.forward * distance,
             rotation
         );
     }
@@ -81,5 +89,16 @@ public sealed class ThirdPersonCamera : MonoBehaviour
     private void OnLook(InputAction.CallbackContext context)
     {
         _lookInput = context.ReadValue<Vector2>();
+    }
+
+    private void OnLookPressed(InputAction.CallbackContext context)
+    {
+        _isLooking = true;
+    }
+
+    private void OnLookReleased(InputAction.CallbackContext context)
+    {
+        _isLooking = false;
+        _lookInput = Vector2.zero;
     }
 }

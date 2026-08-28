@@ -4,8 +4,8 @@ using UnityEngine;
 public class SpiderSwing : MonoBehaviour
 {
     public NetworkPlayer networkPlayer;
-    private Animator _animator;
     private ColyseusClient colyseusClient;
+    [SerializeField] private PlayerAnimationController animationController;
     
     [Header("Swing Shape")]
     [SerializeField] private float swingDuration = 1f;
@@ -14,6 +14,7 @@ public class SpiderSwing : MonoBehaviour
 
     [Header("Web Visual")]
     [SerializeField] private LineRenderer webLine;
+    private Vector3 _webAnchorPosition;
     [SerializeField] private Transform webOrigin;
     [SerializeField] private float webHeight = 15f;
 
@@ -31,7 +32,6 @@ public class SpiderSwing : MonoBehaviour
         _player = GetComponent<PlayerController_New>();
         _characterController = GetComponent<CharacterController>();
         colyseusClient = FindFirstObjectByType<ColyseusClient>();
-        _animator = GetComponent<Animator>();
 
         _transform = transform;
 
@@ -73,11 +73,14 @@ public class SpiderSwing : MonoBehaviour
     {
         if (!networkPlayer.IsOwner)
             return;
-        
+
         if (!isSwinging)
             return;
 
+        UpdateSwingDirection();
+
         swingTimer += Time.deltaTime;
+
         float t = swingTimer / swingDuration;
 
         if (t >= 1f)
@@ -89,23 +92,44 @@ public class SpiderSwing : MonoBehaviour
 
         ApplySwingAtT(t);
         UpdateWebLine();
-        
+
         colyseusClient?.SendMovement(
             transform.position,
-            transform.eulerAngles
+            transform.eulerAngles,
+            animationController.CurrentAnimationState,
+            animationController.CurrentAnimationSpeed
         );
+    }
+    
+    private void UpdateSwingDirection()
+    {
+        Transform cameraTransform = Camera.main.transform;
+
+        Vector3 cameraForward = cameraTransform.forward;
+        cameraForward.y = 0f;
+
+        if (cameraForward.sqrMagnitude < 0.0001f)
+            return;
+
+        swingDirection = cameraForward.normalized;
+
+        // Make player face swing direction
+        _transform.rotation = Quaternion.LookRotation(swingDirection);
     }
 
     private void StartSwing()
     {
-        _animator.SetBool("Swing", true);
+        animationController.SetSwing(true);
+
         isSwinging = true;
         swingTimer = 0f;
         swingStartPos = _transform.position;
 
-        Vector3 facing = _transform.forward;
-        facing.y = 0f;
-        swingDirection = facing.sqrMagnitude > 0.0001f ? facing.normalized : _transform.forward;
+        UpdateSwingDirection();
+
+        // Lock the web attachment point when swing starts.
+        _webAnchorPosition =
+            _transform.position + Vector3.up * webHeight;
 
         _player.IsExternallyControlled = true;
 
@@ -117,8 +141,7 @@ public class SpiderSwing : MonoBehaviour
 
     private void BreakSwing()
     {
-        _animator.SetBool("Swing", false);
-
+        animationController.SetSwing(false);
         float t = Mathf.Clamp01(swingTimer / swingDuration);
         float verticalVelocity = swingDipHeight * (Mathf.PI * 0.5f) / swingDuration * Mathf.Sin(t * Mathf.PI * 0.5f);
 
@@ -127,7 +150,7 @@ public class SpiderSwing : MonoBehaviour
 
     private void EndSwing(float exitVerticalVelocity = 0f)
     {
-        _animator.SetBool("Swing", false);
+        animationController.SetSwing(false);
 
         isSwinging = false;
         _player.IsExternallyControlled = false;
@@ -142,11 +165,9 @@ public class SpiderSwing : MonoBehaviour
         if (webLine == null)
             return;
 
-        Vector3 origin = webOrigin.position;
-        webLine.SetPosition(0, origin);
-        webLine.SetPosition(1, origin + Vector3.up * webHeight);
+        webLine.SetPosition(0, webOrigin.position);
+        webLine.SetPosition(1, _webAnchorPosition);
     }
-
     private void ApplySwingAtT(float t)
     {
         Vector3 horizontal = swingStartPos + swingDirection * (swingDistance * t);

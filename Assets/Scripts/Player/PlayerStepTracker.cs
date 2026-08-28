@@ -5,6 +5,8 @@ using Random = UnityEngine.Random;
 public class PlayerStepTracker : MonoBehaviour
 {
     public NetworkPlayer networkPlayer;
+    private PlayerController_New playerController;
+    Animator animator;
     
     [SerializeField] private LevelProgressionData levelData;
     [SerializeField] private StepPopupController popupController;
@@ -28,6 +30,8 @@ public class PlayerStepTracker : MonoBehaviour
 
     private void Awake()
     {
+        animator = GetComponent<Animator>();
+        playerController = GetComponent<PlayerController_New>();
         currentLevel = levelData.startingLevel;
 
         requiredSteps = levelData.startingRequiredSteps;
@@ -53,9 +57,12 @@ public class PlayerStepTracker : MonoBehaviour
 
     private void CheckSteps()
     {
-        if(Vector3.Distance(transform.position, lastPosition) < stepDistance)
+        if (Vector3.Distance(
+                transform.position,
+                lastPosition) < stepDistance)
+        {
             return;
-
+        }
 
         lastPosition = transform.position;
 
@@ -108,12 +115,24 @@ public class PlayerStepTracker : MonoBehaviour
         maxStepIncrement +=
             levelData.stepIncrementIncreasePerLevel + 1;
 
-
+        playerController.OnLevelUp(levelData.speedIncreasePerLevel);
+        
         popupController.ShowStepPopup(
             "LEVEL UP!"
         );
     }
+    
+    public void AddTreadmillSteps(int amount)
+    {
+        currentSteps += amount;
 
+        popupController.ShowStepPopup(
+            "+" + amount
+        );
+
+        CheckLevel();
+        UpdateUI();
+    }
 
     private void UpdateUI()
     {

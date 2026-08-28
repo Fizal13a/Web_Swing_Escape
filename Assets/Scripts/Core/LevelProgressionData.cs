@@ -18,6 +18,6 @@ public class LevelProgressionData : ScriptableObject
 
     [Header("Level Scaling")]
     public int requiredStepIncreasePerLevel = 200;
-
     public int stepIncrementIncreasePerLevel = 1;
+    public int speedIncreasePerLevel = 1;
 }

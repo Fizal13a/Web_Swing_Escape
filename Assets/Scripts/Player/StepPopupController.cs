@@ -11,9 +11,16 @@ public class StepPopupController : MonoBehaviour
     [SerializeField] private float minVerticalOffset = 80f;
     [SerializeField] private float maxVerticalOffset = 180f;
 
+    public void SetCamera(Camera cam)
+    {
+        playerCamera = cam;
+    }
+
 
     public void ShowStepPopup(string value)
     {
+        if(playerCamera == null) return;
+        
         StepPopup popup = pool.Get();
 
 

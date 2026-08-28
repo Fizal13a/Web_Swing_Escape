@@ -118,6 +118,15 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": true
+                },
+                {
+                    ""name"": ""LookClick"",
+                    ""type"": ""Button"",
+                    ""id"": ""abbaaf1e-9355-402d-bc87-c82eaa3e76b2"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -197,6 +206,17 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                     ""action"": ""Look"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""cb6b6b26-aefb-451f-8176-186939e28cf0"",
+                    ""path"": ""<Mouse>/leftButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""LookClick"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -208,6 +228,7 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         m_PlayerInp_Move = m_PlayerInp.FindAction("Move", throwIfNotFound: true);
         m_PlayerInp_Jump = m_PlayerInp.FindAction("Jump", throwIfNotFound: true);
         m_PlayerInp_Look = m_PlayerInp.FindAction("Look", throwIfNotFound: true);
+        m_PlayerInp_LookClick = m_PlayerInp.FindAction("LookClick", throwIfNotFound: true);
     }
 
     ~@PlayerInputActions()
@@ -291,6 +312,7 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
     private readonly InputAction m_PlayerInp_Move;
     private readonly InputAction m_PlayerInp_Jump;
     private readonly InputAction m_PlayerInp_Look;
+    private readonly InputAction m_PlayerInp_LookClick;
     /// <summary>
     /// Provides access to input actions defined in input action map "PlayerInp".
     /// </summary>
@@ -314,6 +336,10 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "PlayerInp/Look".
         /// </summary>
         public InputAction @Look => m_Wrapper.m_PlayerInp_Look;
+        /// <summary>
+        /// Provides access to the underlying input action "PlayerInp/LookClick".
+        /// </summary>
+        public InputAction @LookClick => m_Wrapper.m_PlayerInp_LookClick;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -349,6 +375,9 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
             @Look.started += instance.OnLook;
             @Look.performed += instance.OnLook;
             @Look.canceled += instance.OnLook;
+            @LookClick.started += instance.OnLookClick;
+            @LookClick.performed += instance.OnLookClick;
+            @LookClick.canceled += instance.OnLookClick;
         }
 
         /// <summary>
@@ -369,6 +398,9 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
             @Look.started -= instance.OnLook;
             @Look.performed -= instance.OnLook;
             @Look.canceled -= instance.OnLook;
+            @LookClick.started -= instance.OnLookClick;
+            @LookClick.performed -= instance.OnLookClick;
+            @LookClick.canceled -= instance.OnLookClick;
         }
 
         /// <summary>
@@ -430,5 +462,12 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnLook(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "LookClick" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnLookClick(InputAction.CallbackContext context);
     }
 }

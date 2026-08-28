@@ -39,9 +39,9 @@ public class PlayerController : MonoBehaviour
         if (direction != Vector3.zero)
             transform.forward = direction;
 
-        colyseusClient.SendMovement(
-            transform.position,
-            transform.eulerAngles
-        );
+        // colyseusClient.SendMovement(
+        //     transform.position,
+        //     transform.eulerAngles
+        // );
     }
 }

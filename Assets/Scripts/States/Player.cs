@@ -32,5 +32,11 @@ public Player() { }
 
 	[Type(5, "number")]
 	public float rotZ = default(float);
+	
+	[Type(6, "number")]
+	public float animationState = 0;
+	
+	[Type(7, "number")]
+	public float animationSpeed = 0;
 }
 
