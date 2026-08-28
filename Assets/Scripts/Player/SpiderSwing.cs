@@ -3,10 +3,12 @@ using UnityEngine;
 [RequireComponent(typeof(CharacterController))]
 public class SpiderSwing : MonoBehaviour
 {
+    #region Fields
+
     public NetworkPlayer networkPlayer;
     private ColyseusClient colyseusClient;
     [SerializeField] private PlayerAnimationController animationController;
-    
+
     [Header("Swing Shape")]
     [SerializeField] private float swingDuration = 1f;
     [SerializeField] private float swingDistance = 8f;
@@ -26,6 +28,10 @@ public class SpiderSwing : MonoBehaviour
     private float swingTimer;
     private Vector3 swingStartPos;
     private Vector3 swingDirection;
+
+    #endregion
+
+    #region Initialize
 
     private void Awake()
     {
@@ -61,6 +67,10 @@ public class SpiderSwing : MonoBehaviour
             EndSwing();
     }
 
+    #endregion
+
+    #region Input
+
     private void OnJumpPressedWhileAirborne()
     {
         if (isSwinging)
@@ -68,6 +78,10 @@ public class SpiderSwing : MonoBehaviour
         else
             StartSwing();
     }
+
+    #endregion
+
+    #region Update Loop
 
     private void Update()
     {
@@ -100,7 +114,7 @@ public class SpiderSwing : MonoBehaviour
             animationController.CurrentAnimationSpeed
         );
     }
-    
+
     private void UpdateSwingDirection()
     {
         Transform cameraTransform = Camera.main.transform;
@@ -116,6 +130,10 @@ public class SpiderSwing : MonoBehaviour
         // Make player face swing direction
         _transform.rotation = Quaternion.LookRotation(swingDirection);
     }
+
+    #endregion
+
+    #region Swing Lifecycle
 
     private void StartSwing()
     {
@@ -160,14 +178,10 @@ public class SpiderSwing : MonoBehaviour
             webLine.enabled = false;
     }
 
-    private void UpdateWebLine()
-    {
-        if (webLine == null)
-            return;
+    #endregion
 
-        webLine.SetPosition(0, webOrigin.position);
-        webLine.SetPosition(1, _webAnchorPosition);
-    }
+    #region Movement & Visuals
+
     private void ApplySwingAtT(float t)
     {
         Vector3 horizontal = swingStartPos + swingDirection * (swingDistance * t);
@@ -180,4 +194,15 @@ public class SpiderSwing : MonoBehaviour
     {
         _characterController.Move(worldPosition - _transform.position);
     }
+
+    private void UpdateWebLine()
+    {
+        if (webLine == null)
+            return;
+
+        webLine.SetPosition(0, webOrigin.position);
+        webLine.SetPosition(1, _webAnchorPosition);
+    }
+
+    #endregion
 }

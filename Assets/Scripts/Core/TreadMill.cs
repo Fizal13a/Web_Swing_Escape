@@ -2,6 +2,8 @@ using UnityEngine;
 
 public class TreadMill : MonoBehaviour
 {
+    #region Fields
+
     [Header("Step Reward")]
     [SerializeField] private int minStepIncrement = 2;
     [SerializeField] private int maxStepIncrement = 5;
@@ -9,6 +11,10 @@ public class TreadMill : MonoBehaviour
 
     private float _timer;
     private PlayerStepTracker _playerStepTracker;
+
+    #endregion
+
+    #region Trigger Events
 
     private void OnTriggerEnter(Collider other)
     {
@@ -20,7 +26,7 @@ public class TreadMill : MonoBehaviour
 
         if (!networkPlayer.networkPlayer.IsOwner)
             return;
-        
+
         if (!other.TryGetComponent(
                 out PlayerStepTracker stepTracker))
         {
@@ -43,7 +49,7 @@ public class TreadMill : MonoBehaviour
 
         if (!networkPlayer.networkPlayer.IsOwner)
             return;
-        
+
         if (!other.TryGetComponent(
                 out PlayerStepTracker stepTracker))
         {
@@ -58,6 +64,10 @@ public class TreadMill : MonoBehaviour
         _playerStepTracker = null;
         _timer = 0f;
     }
+
+    #endregion
+
+    #region Update Loop
 
     private void Update()
     {
@@ -80,4 +90,6 @@ public class TreadMill : MonoBehaviour
             stepIncrement
         );
     }
+
+    #endregion
 }

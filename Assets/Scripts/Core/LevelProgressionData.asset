@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: LevelProgressionData
   m_EditorClassIdentifier: 
   startingLevel: 1
-  startingRequiredSteps: 200
+  startingRequiredSteps: 60
   startingMinStepIncrement: 1
   startingMaxStepIncrement: 3
   requiredStepIncreasePerLevel: 200

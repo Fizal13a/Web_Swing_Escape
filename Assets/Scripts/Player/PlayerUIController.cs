@@ -6,34 +6,28 @@ using UnityEngine.Events;
 
 public class PlayerUIController : MonoBehaviour
 {
+    #region Fields
+
     public NetworkPlayer networkPlayer;
     public PlayerController_New playerController;
-    
+
     [SerializeField] private PlayerStepTracker stepTracker;
 
     [SerializeField] private Image levelBar;
     [SerializeField] private TMP_Text stepText;
-    
+
     [SerializeField] private TMP_Text trophyCountText;
-    
+
     [Header("Speed")]
     [SerializeField] private TMP_Text maxSpeedText;
     [SerializeField] private TMP_InputField currentSpeedText;
-    
+
     [Header("Swing")]
     [SerializeField] private TMP_Text swingText;
 
+    #endregion
 
-    private void OnEnable()
-    {
-        stepTracker.OnLevelProgressChanged += UpdateLevelUI;
-    }
-
-
-    private void OnDisable()
-    {
-        stepTracker.OnLevelProgressChanged -= UpdateLevelUI;
-    }
+    #region Initialize
 
     private void Awake()
     {
@@ -41,6 +35,15 @@ public class PlayerUIController : MonoBehaviour
         currentSpeedText.onValueChanged.AddListener(OnSpeedInputChanged);
     }
 
+    private void OnEnable()
+    {
+        stepTracker.OnLevelProgressChanged += UpdateLevelUI;
+    }
+
+    private void OnDisable()
+    {
+        stepTracker.OnLevelProgressChanged -= UpdateLevelUI;
+    }
 
     private void Start()
     {
@@ -48,15 +51,18 @@ public class PlayerUIController : MonoBehaviour
         {
             gameObject.SetActive(false);
         }
-        
+
         levelBar.fillAmount = 0f;
         stepText.text = "0 / 0";
         maxSpeedText.text = "MaxSpeed - " + playerController.GetMaxSpeed().ToString();
-        currentSpeedText.text = "MaxSpeed - " + playerController.GetMaxSpeed().ToString();
-        
+        currentSpeedText.text = playerController.GetMaxSpeed().ToString();
+
         OnTrophyCountChanged(0);
     }
 
+    #endregion
+
+    #region UI Updates
 
     private void UpdateLevelUI(
         float progress,
@@ -89,6 +95,10 @@ public class PlayerUIController : MonoBehaviour
         trophyCountText.text = count.ToString();
     }
 
+    #endregion
+
+    #region Speed Input
+
     private void OnSpeedInputChanged(string value)
     {
         if (string.IsNullOrEmpty(value))
@@ -108,4 +118,6 @@ public class PlayerUIController : MonoBehaviour
 
         playerController.SetCurrentSpeed(speed);
     }
+
+    #endregion
 }

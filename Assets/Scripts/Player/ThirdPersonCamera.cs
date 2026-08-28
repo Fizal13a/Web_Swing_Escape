@@ -3,6 +3,8 @@ using UnityEngine.InputSystem;
 
 public sealed class ThirdPersonCamera : MonoBehaviour
 {
+    #region Fields
+
     [Header("References")]
     [SerializeField] private Transform target;
 
@@ -23,14 +25,13 @@ public sealed class ThirdPersonCamera : MonoBehaviour
     private Vector2 _lookInput;
     private bool _isLooking;
 
+    #endregion
+
+    #region Initialize
+
     private void Awake()
     {
         _inputActions = new PlayerInputActions();
-    }
-
-    public void SetPlayerTarget(Transform target)
-    {
-        this.target = target;
     }
 
     private void OnEnable()
@@ -54,6 +55,39 @@ public sealed class ThirdPersonCamera : MonoBehaviour
 
         _inputActions.Disable();
     }
+
+    #endregion
+
+    #region Public API
+
+    public void SetPlayerTarget(Transform target)
+    {
+        this.target = target;
+    }
+
+    #endregion
+
+    #region Input
+
+    private void OnLook(InputAction.CallbackContext context)
+    {
+        _lookInput = context.ReadValue<Vector2>();
+    }
+
+    private void OnLookPressed(InputAction.CallbackContext context)
+    {
+        _isLooking = true;
+    }
+
+    private void OnLookReleased(InputAction.CallbackContext context)
+    {
+        _isLooking = false;
+        _lookInput = Vector2.zero;
+    }
+
+    #endregion
+
+    #region Update Loop
 
     private void LateUpdate()
     {
@@ -86,19 +120,5 @@ public sealed class ThirdPersonCamera : MonoBehaviour
         );
     }
 
-    private void OnLook(InputAction.CallbackContext context)
-    {
-        _lookInput = context.ReadValue<Vector2>();
-    }
-
-    private void OnLookPressed(InputAction.CallbackContext context)
-    {
-        _isLooking = true;
-    }
-
-    private void OnLookReleased(InputAction.CallbackContext context)
-    {
-        _isLooking = false;
-        _lookInput = Vector2.zero;
-    }
+    #endregion
 }

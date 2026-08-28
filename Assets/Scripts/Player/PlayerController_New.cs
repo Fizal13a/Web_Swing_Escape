@@ -4,6 +4,8 @@ using UnityEngine.InputSystem;
 
 public class PlayerController_New : MonoBehaviour
 {
+    #region Fields
+
     private CharacterController _characterController;
     private PlayerInputActions _playerInputActions;
     public PlayerUIController _playerUIController;
@@ -11,29 +13,29 @@ public class PlayerController_New : MonoBehaviour
     private Transform _transform;
     [SerializeField] private PlayerAnimationController animationController;
     [SerializeField] private Transform cameraTransform;
-    
+
     [Header("Network")]
     public NetworkPlayer networkPlayer;
     private ColyseusClient colyseusClient;
 
     [Header("Movement")]
-    [SerializeField] private float maxMoveSpeed = 5f;   
-    [SerializeField] private float currentSpeed = 5f;   
-    [SerializeField] private float acceleration = 25f;  
-    [SerializeField] private float deceleration = 30f;  
-    [SerializeField] private float rotateSpeed = 720f;  
+    [SerializeField] private float maxMoveSpeed = 5f;
+    [SerializeField] private float currentSpeed = 5f;
+    [SerializeField] private float acceleration = 25f;
+    [SerializeField] private float deceleration = 30f;
+    [SerializeField] private float rotateSpeed = 720f;
     [SerializeField] private float animationReferenceSpeed = 5f;
 
     [Header("Jump")]
     [SerializeField] private float jumpHeight = 2f;
     [SerializeField] private float gravity = -20f;
-    [SerializeField] private float fallGravityMultiplier = 2.2f;  
-    [SerializeField] private float lowJumpMultiplier = 2f;        
+    [SerializeField] private float fallGravityMultiplier = 2.2f;
+    [SerializeField] private float lowJumpMultiplier = 2f;
     [SerializeField] private float terminalVelocity = 25f;
-    [SerializeField] private float coyoteTime = 0.12f;            
+    [SerializeField] private float coyoteTime = 0.12f;
     [SerializeField] private float jumpBufferTime = 0.12f;
 
-    [Header("Swing")] 
+    [Header("Swing")]
     private int maxSwings = 4;
     private int currentSwings = 0;
 
@@ -41,9 +43,26 @@ public class PlayerController_New : MonoBehaviour
     [SerializeField] private Transform groundCheck;
     [SerializeField] private float groundCheckRadius = 0.25f;
     [SerializeField] private LayerMask groundLayer;
-    
+
     [Header("Stats")]
     private int trophyCount;
+
+    private bool isGrounded;
+    private bool jumpHeld;
+    private bool isMoving = false;
+    private bool onTreadmill;
+
+    private float smoothedSpeed;
+    private float coyoteCounter;
+    private float jumpBufferCounter;
+
+    private Vector2 movementInput;
+    private Vector3 currentMoveDir;
+    private float verticalVelocity;
+
+    #endregion
+
+    #region Properties & Events
 
     public float CurrentSpeed
     {
@@ -60,18 +79,7 @@ public class PlayerController_New : MonoBehaviour
     // so gravity picks up smoothly instead of snapping to 0.
     public void SetVerticalVelocity(float v) => verticalVelocity = v;
 
-    private bool isGrounded;
-    private bool jumpHeld;
-    private bool isMoving = false;
-    private bool onTreadmill;
-
-    private float smoothedSpeed;   
-    private float coyoteCounter;
-    private float jumpBufferCounter;
-
-    private Vector2 movementInput;
-    private Vector3 currentMoveDir;
-    private float verticalVelocity;
+    #endregion
 
     #region Initialize
 
@@ -110,16 +118,16 @@ public class PlayerController_New : MonoBehaviour
 
     #endregion
 
-    #region Actions
+    #region Input Actions
 
     private void OnMove(InputAction.CallbackContext context)
     {
         if (!networkPlayer.IsOwner)
             return;
-        
+
         movementInput = context.ReadValue<Vector2>();
         isMoving = movementInput.sqrMagnitude > 0;
-        
+
         if (!onTreadmill)
             animationController.SetRun(isMoving);
         else
@@ -130,7 +138,7 @@ public class PlayerController_New : MonoBehaviour
     {
         if (!networkPlayer.IsOwner)
             return;
-        
+
         jumpHeld = true;
 
         if (!isGrounded && currentSwings > 0)
@@ -149,35 +157,73 @@ public class PlayerController_New : MonoBehaviour
     {
         if (!networkPlayer.IsOwner)
             return;
-        
+
         jumpHeld = false;
     }
-    
+
+    #endregion
+
+    #region Public API
+
     public void SetTreadmillState(bool value)
     {
         onTreadmill = value;
-        
         animationController.SetRun(value);
-        
     }
 
     public void OnLevelUp(int speedIncrement)
     {
         maxMoveSpeed += speedIncrement;
         currentSpeed = maxMoveSpeed;
-        
+
         _playerUIController.OnMaxSpeedChanged((int)maxMoveSpeed);
+    }
+
+    public void TeleportTo(Vector3 position)
+    {
+        CharacterController controller = GetComponent<CharacterController>();
+
+        controller.enabled = false;
+        transform.position = position;
+        controller.enabled = true;
+    }
+
+    public float GetMaxSpeed()
+    {
+        return maxMoveSpeed;
+    }
+
+    public void SetCurrentSpeed(int speed)
+    {
+        currentSpeed = speed;
+    }
+
+    public int GetTrophyCount()
+    {
+        return trophyCount;
+    }
+
+    public void SetTrophyCount(int count)
+    {
+        trophyCount += count;
+        _playerUIController.OnTrophyCountChanged(trophyCount);
+    }
+
+    public void SetCameraTransform(Camera cameraTransform)
+    {
+        this.cameraTransform = cameraTransform.transform;
+        _stepPopupController.SetCamera(cameraTransform);
     }
 
     #endregion
 
-    #region Update
+    #region Update Loop
 
     private void Update()
     {
         if (!networkPlayer.IsOwner)
             return;
-        
+
         if (IsExternallyControlled)
             return; // SpiderSwing is driving the CharacterController this frame
 
@@ -210,8 +256,8 @@ public class PlayerController_New : MonoBehaviour
 
     private void HandleMovement(float dt)
     {
-        if(cameraTransform == null) return;
-        
+        if (cameraTransform == null) return;
+
         Vector3 cameraForward = cameraTransform.forward;
         Vector3 cameraRight = cameraTransform.right;
 
@@ -258,7 +304,7 @@ public class PlayerController_New : MonoBehaviour
             animationSpeed = 1;
 
         animationController.SetRunSpeed(animationSpeed);
-        
+
         colyseusClient?.SendMovement(
             transform.position,
             transform.eulerAngles,
@@ -320,44 +366,6 @@ public class PlayerController_New : MonoBehaviour
     }
 
     #endregion
-    
-    public void TeleportTo(Vector3 position)
-    {
-        CharacterController controller = GetComponent<CharacterController>();
-
-        controller.enabled = false;
-
-        transform.position = position;
-
-        controller.enabled = true;
-    }
-
-    public float GetMaxSpeed()
-    {
-        return maxMoveSpeed;
-    }
-
-    public void SetCurrentSpeed(int speed)
-    {
-        currentSpeed = speed;
-    }
-
-    public int GetTrophyCount()
-    {
-        return trophyCount;
-    }
-
-    public void SetTrophyCount(int count)
-    {
-        trophyCount += count;
-        _playerUIController.OnTrophyCountChanged(trophyCount);
-    }
-
-    public void SetCameraTransform(Camera cameraTransform)
-    {
-        this.cameraTransform = cameraTransform.transform;
-        _stepPopupController.SetCamera(cameraTransform);
-    }
 
     #region Debug
 
