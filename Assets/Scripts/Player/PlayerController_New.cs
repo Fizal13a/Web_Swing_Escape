@@ -6,10 +6,12 @@ public class PlayerController_New : MonoBehaviour
 {
     #region Fields
 
+    private RebirthManager rebirthManager;
     private CharacterController _characterController;
     private PlayerInputActions _playerInputActions;
     public PlayerUIController _playerUIController;
     public StepPopupController _stepPopupController;
+    
     private Transform _transform;
     [SerializeField] private PlayerAnimationController animationController;
     [SerializeField] private Transform cameraTransform;
@@ -52,6 +54,9 @@ public class PlayerController_New : MonoBehaviour
     private bool isMoving = false;
     private bool onTreadmill;
 
+    private int level = 1;
+    private int rebirthLevel = 0;
+
     private float smoothedSpeed;
     private float coyoteCounter;
     private float jumpBufferCounter;
@@ -86,6 +91,7 @@ public class PlayerController_New : MonoBehaviour
     private void Awake()
     {
         _characterController = GetComponent<CharacterController>();
+        rebirthManager = GetComponent<RebirthManager>();
         _transform = transform;
         _playerInputActions = new PlayerInputActions();
         colyseusClient = FindFirstObjectByType<ColyseusClient>();
@@ -173,10 +179,17 @@ public class PlayerController_New : MonoBehaviour
 
     public void OnLevelUp(int speedIncrement)
     {
+        level++;
         maxMoveSpeed += speedIncrement;
         currentSpeed = maxMoveSpeed;
 
         _playerUIController.OnMaxSpeedChanged((int)maxMoveSpeed);
+        rebirthManager.OnLevelUp(level);
+    }
+
+    public void OnRebirth()
+    {
+        level = 1;
     }
 
     public void TeleportTo(Vector3 position)
@@ -201,6 +214,16 @@ public class PlayerController_New : MonoBehaviour
     public int GetTrophyCount()
     {
         return trophyCount;
+    }
+
+    public int GetRebirthLevel()
+    {
+        return rebirthLevel;
+    }
+
+    public void SetRebirthLevel(int level)
+    {
+        rebirthLevel = level;
     }
 
     public void SetTrophyCount(int count)

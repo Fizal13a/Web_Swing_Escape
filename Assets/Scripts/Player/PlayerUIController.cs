@@ -14,6 +14,7 @@ public class PlayerUIController : MonoBehaviour
     [SerializeField] private PlayerStepTracker stepTracker;
 
     [SerializeField] private Image levelBar;
+    [SerializeField] private TMP_Text levelText;
     [SerializeField] private TMP_Text stepText;
 
     [SerializeField] private TMP_Text trophyCountText;
@@ -24,6 +25,13 @@ public class PlayerUIController : MonoBehaviour
 
     [Header("Swing")]
     [SerializeField] private TMP_Text swingText;
+    
+    [Header("Rebirth")]
+    [SerializeField] private TMP_Text rebirthText;
+    [SerializeField] private TMP_Text rebirthLevelText;
+    [SerializeField] private TMP_Text currentSpeedMultiplierText;
+    [SerializeField] private TMP_Text nextSpeedMultiplierText;
+    [SerializeField] private Image rebirthLevelBar;
 
     #endregion
 
@@ -87,12 +95,42 @@ public class PlayerUIController : MonoBehaviour
 
     public void OnMaxSpeedChanged(int max)
     {
+        currentSpeedText.text = max.ToString();
         maxSpeedText.text = max.ToString();
     }
 
     public void OnTrophyCountChanged(int count)
     {
         trophyCountText.text = count.ToString();
+    }
+
+    public void UpdateSpeedMultiplier(float speedMultiplier)
+    {
+        currentSpeedMultiplierText.text =  $"{speedMultiplier}";
+        nextSpeedMultiplierText.text = $"{speedMultiplier + 0.5f}x";
+    }
+
+    public void OnLevelUp(int level, float rebirthProgress, int rebirthLevel)
+    {
+        levelText.text = $"Level : {level.ToString()}";
+        
+        rebirthLevelBar.fillAmount = rebirthProgress;
+        rebirthLevelText.text = $"{level.ToString()} / {rebirthLevel.ToString()}";
+    }
+
+    public void OnRebirth(int level, int rebirthLevel)
+    {
+        levelText.text = $"Level : {level.ToString()}";
+        
+        rebirthLevelBar.fillAmount = 0;
+        rebirthLevelText.text = $"{level.ToString()} / {rebirthLevel.ToString()}";
+        
+        playerController.OnRebirth();
+    }
+
+    public void OnRebirthIncrement(int rebirthCount)
+    {
+        rebirthText.text = rebirthCount.ToString();
     }
 
     #endregion

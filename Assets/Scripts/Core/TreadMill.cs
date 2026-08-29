@@ -12,6 +12,8 @@ public class TreadMill : MonoBehaviour
     private float _timer;
     private PlayerStepTracker _playerStepTracker;
 
+    [SerializeField] private int requiredRebirth;
+
     #endregion
 
     #region Trigger Events
@@ -27,6 +29,9 @@ public class TreadMill : MonoBehaviour
         if (!networkPlayer.networkPlayer.IsOwner)
             return;
 
+        if (networkPlayer.GetRebirthLevel() < requiredRebirth) 
+            return;
+
         if (!other.TryGetComponent(
                 out PlayerStepTracker stepTracker))
         {
@@ -37,6 +42,7 @@ public class TreadMill : MonoBehaviour
         _timer = stepInterval;
 
         networkPlayer.SetTreadmillState(true);
+       
     }
 
     private void OnTriggerExit(Collider other)

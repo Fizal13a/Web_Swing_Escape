@@ -8,6 +8,7 @@ public class PlayerStepTracker : MonoBehaviour
 
     public NetworkPlayer networkPlayer;
     private PlayerController_New playerController;
+    public PlayerUIController playerUIController;
     Animator animator;
 
     [SerializeField] private LevelProgressionData levelData;
@@ -23,6 +24,8 @@ public class PlayerStepTracker : MonoBehaviour
 
     private int minStepIncrement;
     private int maxStepIncrement;
+
+    private float currentStepIncrement = 1;
 
     public event Action<float, int, int> OnLevelProgressChanged;
 
@@ -52,17 +55,14 @@ public class PlayerStepTracker : MonoBehaviour
 
     private void Update()
     {
-        if (!networkPlayer.IsOwner)
-            return;
+        if (!networkPlayer.IsOwner) return;
 
         CheckSteps();
     }
 
     private void CheckSteps()
     {
-        if (Vector3.Distance(
-                transform.position,
-                lastPosition) < stepDistance)
+        if (Vector3.Distance(transform.position, lastPosition) < stepDistance)
         {
             return;
         }
@@ -78,16 +78,11 @@ public class PlayerStepTracker : MonoBehaviour
 
     private void AddStep()
     {
-        int stepGain = Random.Range(
-            minStepIncrement,
-            maxStepIncrement + 1
-        );
+        int stepGain = Random.Range(minStepIncrement, maxStepIncrement + 1);
 
-        currentSteps += stepGain;
+        currentSteps += stepGain * (int)currentStepIncrement;
 
-        popupController.ShowStepPopup(
-            "+" + stepGain
-        );
+        popupController.ShowStepPopup("+" + stepGain);
 
         CheckLevel();
 
@@ -96,51 +91,52 @@ public class PlayerStepTracker : MonoBehaviour
 
     private void CheckLevel()
     {
-        if (currentSteps < requiredSteps)
-            return;
+        if (currentSteps < requiredSteps) return;
 
         currentLevel++;
 
         currentSteps = 0;
 
-        requiredSteps +=
-            levelData.requiredStepIncreasePerLevel;
+        requiredSteps += levelData.requiredStepIncreasePerLevel;
 
-        minStepIncrement +=
-            levelData.stepIncrementIncreasePerLevel;
+        minStepIncrement += levelData.stepIncrementIncreasePerLevel;
 
-        maxStepIncrement +=
-            levelData.stepIncrementIncreasePerLevel + 1;
+        maxStepIncrement += levelData.stepIncrementIncreasePerLevel + 1;
 
         playerController.OnLevelUp(levelData.speedIncreasePerLevel);
 
-        popupController.ShowStepPopup(
-            "LEVEL UP!"
-        );
+        popupController.ShowStepPopup("LEVEL UP!");
+    }
+
+    public void OnRebirth()
+    {
+        currentStepIncrement += 0.5f;
+        playerUIController.UpdateSpeedMultiplier(currentStepIncrement);
     }
 
     public void AddTreadmillSteps(int amount)
     {
         currentSteps += amount;
 
-        popupController.ShowStepPopup(
-            "+" + amount
-        );
+        popupController.ShowStepPopup("+" + amount);
 
         CheckLevel();
         UpdateUI();
     }
 
+    public void OnRebirthLevel()
+    {
+        currentLevel = levelData.startingLevel;
+        requiredSteps = levelData.startingRequiredSteps;
+        currentSteps = 0;
+        OnLevelProgressChanged?.Invoke(0, currentSteps, requiredSteps);
+    }
+
     private void UpdateUI()
     {
-        float progress =
-            (float)currentSteps / requiredSteps;
+        float progress = (float)currentSteps / requiredSteps;
 
-        OnLevelProgressChanged?.Invoke(
-            progress,
-            currentSteps,
-            requiredSteps
-        );
+        OnLevelProgressChanged?.Invoke(progress, currentSteps, requiredSteps);
     }
 
     #endregion
