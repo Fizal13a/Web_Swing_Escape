@@ -231,6 +231,16 @@ public class ColyseusClient : MonoBehaviour
                 animationController.SetNetworkAnimationState(
                     value
                 );
+                
+                SpiderSwing swing =
+                    playerObject.GetComponentInChildren<SpiderSwing>();
+
+                if (swing != null)
+                {
+                    swing.SetNetworkSwing(
+                        value == PlayerAnimationController.Swing
+                    );
+                }
             }
         );
 

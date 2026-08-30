@@ -128,6 +128,49 @@ public class SpiderSwing : MonoBehaviour
         // Make player face swing direction
         _transform.rotation = Quaternion.LookRotation(swingDirection);
     }
+    
+    private void LateUpdate()
+    {
+        if (networkPlayer.IsOwner)
+            return;
+
+        if (!isSwinging)
+            return;
+
+        UpdateNetworkWebLine();
+    }
+    
+    private void UpdateNetworkWebLine()
+    {
+        if (webLine == null || !webLine.enabled)
+            return;
+
+        webLine.SetPosition(0, webOrigin.position);
+
+        webLine.SetPosition(
+            1,
+            _transform.position + Vector3.up * webHeight
+        );
+    }
+    
+    public void SetNetworkSwing(bool value)
+    {
+        if (networkPlayer.IsOwner)
+            return;
+
+        isSwinging = value;
+
+        if (webLine != null)
+            webLine.enabled = value;
+
+        if (value)
+        {
+            _webAnchorPosition =
+                _transform.position + Vector3.up * webHeight;
+
+            UpdateWebLine();
+        }
+    }
 
     #endregion
 
