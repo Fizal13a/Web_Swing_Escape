@@ -30,7 +30,7 @@ public class ColyseusClient : MonoBehaviour
     {
         try
         {
-            client = new Client("ws://localhost:2567");
+            client = new Client("wss://web-swing-escape-server.onrender.com");
 
             room = await client.JoinOrCreate<MyRoomState>("my_room");
 

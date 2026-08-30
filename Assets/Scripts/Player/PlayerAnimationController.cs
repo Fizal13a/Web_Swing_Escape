@@ -74,6 +74,9 @@ public class PlayerAnimationController : MonoBehaviour
         CurrentAnimationState = newState;
         CurrentAnimationSpeed = newSpeed;
 
+        if (CurrentAnimationSpeed < 1)
+            CurrentAnimationSpeed = 1f;
+        
         if (stateChanged || speedChanged)
         {
             AnimationChanged?.Invoke(
