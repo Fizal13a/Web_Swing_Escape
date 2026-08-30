@@ -45,6 +45,14 @@ public class PlayerController_New : MonoBehaviour
     [SerializeField] private Transform groundCheck;
     [SerializeField] private float groundCheckRadius = 0.25f;
     [SerializeField] private LayerMask groundLayer;
+    
+    [Header("Network")]
+    private float networkTimer;
+    private const float NetworkSendInterval = 0.05f; // 20 Hz
+    private Vector3 lastNetworkPosition;
+    private float lastNetworkRotationY;
+    private int lastAnimationState;
+    private float lastAnimationSpeed;
 
     [Header("Stats")]
     private int trophyCount;
@@ -109,6 +117,8 @@ public class PlayerController_New : MonoBehaviour
 
         _playerInputActions.PlayerInp.Jump.performed += OnJumpPressed;
         _playerInputActions.PlayerInp.Jump.canceled += OnJumpReleased;
+        
+        animationController.AnimationChanged += OnAnimationChanged;
     }
 
     private void OnDisable()
@@ -118,6 +128,8 @@ public class PlayerController_New : MonoBehaviour
 
         _playerInputActions.PlayerInp.Jump.performed -= OnJumpPressed;
         _playerInputActions.PlayerInp.Jump.canceled -= OnJumpReleased;
+        
+        animationController.AnimationChanged -= OnAnimationChanged;
 
         _playerInputActions.Disable();
     }
@@ -165,6 +177,17 @@ public class PlayerController_New : MonoBehaviour
             return;
 
         jumpHeld = false;
+    }
+    
+    private void OnAnimationChanged(int state, float speed)
+    {
+        if (!networkPlayer.IsOwner)
+            return;
+
+        colyseusClient?.SendAnimation(
+            state,
+            speed
+        );
     }
 
     #endregion
@@ -257,6 +280,8 @@ public class PlayerController_New : MonoBehaviour
         HandleJump();
         HandleMovement(dt);
         HandleGravity(dt);
+        
+        HandleNetworkSync(dt);
     }
 
     private void HandleTimers(float dt)
@@ -327,13 +352,6 @@ public class PlayerController_New : MonoBehaviour
             animationSpeed = 1;
 
         animationController.SetRunSpeed(animationSpeed);
-
-        colyseusClient?.SendMovement(
-            transform.position,
-            transform.eulerAngles,
-            animationController.CurrentAnimationState,
-            animationController.CurrentAnimationSpeed
-        );
     }
 
     private void HandleGravity(float dt)
@@ -386,6 +404,41 @@ public class PlayerController_New : MonoBehaviour
         {
             animationController.SetAir(true);
         }
+    }
+    
+    private void HandleNetworkSync(float dt)
+    {
+        networkTimer += dt;
+
+        if (networkTimer < NetworkSendInterval)
+            return;
+
+        networkTimer = 0f;
+
+        Vector3 position = transform.position;
+        float rotationY = transform.eulerAngles.y;
+
+        bool positionChanged =
+            (position - lastNetworkPosition).sqrMagnitude > 0.0004f;
+
+        bool rotationChanged =
+            Mathf.Abs(
+                Mathf.DeltaAngle(
+                    lastNetworkRotationY,
+                    rotationY
+                )
+            ) > 0.5f;
+
+        if (!positionChanged && !rotationChanged)
+            return;
+
+        colyseusClient?.SendMovement(
+            position,
+            rotationY
+        );
+
+        lastNetworkPosition = position;
+        lastNetworkRotationY = rotationY;
     }
 
     #endregion

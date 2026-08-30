@@ -10,33 +10,29 @@ using Colyseus.Schema;
 using UnityEngine.Scripting;
 #endif
 
-public partial class Player : Schema {
+public partial class Player : Schema
+{
 #if UNITY_5_3_OR_NEWER
-[Preserve]
+	[Preserve]
 #endif
-public Player() { }
-	[Type(0, "number")]
+	public Player() { }
+
+	[Type(0, "float32")]
 	public float x = default(float);
 
-	[Type(1, "number")]
+	[Type(1, "float32")]
 	public float y = default(float);
 
-	[Type(2, "number")]
+	[Type(2, "float32")]
 	public float z = default(float);
 
-	[Type(3, "number")]
-	public float rotX = default(float);
-
-	[Type(4, "number")]
+	[Type(3, "float32")]
 	public float rotY = default(float);
 
-	[Type(5, "number")]
-	public float rotZ = default(float);
-	
-	[Type(6, "number")]
-	public float animationState = 0;
-	
-	[Type(7, "number")]
-	public float animationSpeed = 0;
+	[Type(4, "uint8")]
+	public byte animationState = default(byte);
+
+	[Type(5, "float32")]
+	public float animationSpeed = default(float);
 }
 

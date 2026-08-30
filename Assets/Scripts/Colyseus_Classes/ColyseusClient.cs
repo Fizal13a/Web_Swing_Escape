@@ -1,22 +1,32 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Colyseus;
 using Colyseus.Schema;
-using System.Collections.Generic;
 
 public class ColyseusClient : MonoBehaviour
 {
     private Client client;
     private Room<MyRoomState> room;
 
+    [Header("Camera")]
     public Camera playerCamera;
     public ThirdPersonCamera cameraController;
-    [SerializeField]
-    private GameObject playerPrefab;
 
-    private Dictionary<string, GameObject> players = new Dictionary<string, GameObject>();
+    [Header("Player")]
+    [SerializeField] private GameObject playerPrefab;
 
-    async void Start()
+    private readonly Dictionary<string, GameObject> players =
+        new Dictionary<string, GameObject>();
+
+    public bool IsConnected => room != null;
+
+
+    // =========================================================
+    // CONNECTION
+    // =========================================================
+
+    private async void Start()
     {
         try
         {
@@ -26,14 +36,22 @@ public class ColyseusClient : MonoBehaviour
 
             Debug.Log("Joined Colyseus room!");
             Debug.Log("Room ID: " + room.Id);
+            Debug.Log("Session ID: " + room.SessionId);
 
             AssignCallbacks();
         }
         catch (Exception e)
         {
-            Debug.LogError("Colyseus connection failed: " + e);
+            Debug.LogError(
+                "Colyseus connection failed: " + e
+            );
         }
     }
+
+
+    // =========================================================
+    // CALLBACKS
+    // =========================================================
 
     private void AssignCallbacks()
     {
@@ -43,120 +61,263 @@ public class ColyseusClient : MonoBehaviour
             state => state.players,
             (sessionId, player) =>
             {
-                Debug.Log("Player spawned: " + sessionId);
-
-                GameObject playerObject = Instantiate(playerPrefab);
-
-                NetworkPlayer networkPlayer = playerObject.GetComponent<NetworkPlayer>();
-                networkPlayer.Initialize(sessionId, room.SessionId);
-                
-                PlayerController_New playerControllerNew =
-                    playerObject.GetComponentInChildren<PlayerController_New>();
-
-                bool isOwner = networkPlayer.IsOwner;
-                players[sessionId] = playerObject;
-
-                if (isOwner)
-                {
-                    cameraController.SetPlayerTarget(playerControllerNew.transform);
-                    playerControllerNew.SetCameraTransform(playerCamera);
-                }
-
-                Transform playerTransform =
-                    playerObject.GetComponentInChildren<PlayerController_New>().transform;
-                
-                PlayerAnimationController animationController =
-                    playerObject.GetComponentInChildren<PlayerAnimationController>();
-
-                playerTransform.position = new Vector3(
-                    player.x,
-                    player.y,
-                    player.z
+                SpawnPlayer(
+                    sessionId,
+                    player,
+                    callbacks
                 );
+            }
+        );
 
-                if (!isOwner)
-                {
-                    callbacks.Listen(player, p => p.x, (value, previous) =>
-                    {
-                        Vector3 position = playerTransform.position;
-                        position.x = value;
-                        playerTransform.position = position;
-                    });
-
-                    callbacks.Listen(player, p => p.y, (value, previous) =>
-                    {
-                        Vector3 position = playerTransform.position;
-                        position.y = value;
-                        playerTransform.position = position;
-                    });
-
-                    callbacks.Listen(player, p => p.z, (value, previous) =>
-                    {
-                        Vector3 position = playerTransform.position;
-                        position.z = value;
-                        playerTransform.position = position;
-                    });
-
-                    callbacks.Listen(player, p => p.rotX, (value, previous) =>
-                    {
-                        Vector3 rotation = playerTransform.eulerAngles;
-                        rotation.x = value;
-                        playerTransform.eulerAngles = rotation;
-                    });
-
-                    callbacks.Listen(player, p => p.rotY, (value, previous) =>
-                    {
-                        Vector3 rotation = playerTransform.eulerAngles;
-                        rotation.y = value;
-                        playerTransform.eulerAngles = rotation;
-                    });
-
-                    callbacks.Listen(player, p => p.rotZ, (value, previous) =>
-                    {
-                        Vector3 rotation = playerTransform.eulerAngles;
-                        rotation.z = value;
-                        playerTransform.eulerAngles = rotation;
-                    });
-                    
-                    callbacks.Listen(player, p => p.animationState, (value, previous) =>
-                    {
-                        animationController.SetNetworkAnimationState((int)value);
-                    });
-                    
-                    callbacks.Listen(player, p => p.animationSpeed, (value, previous) =>
-                    {
-                        animationController.SetAnimationSpeed(value);
-                    });
-                }
+        callbacks.OnRemove(
+            state => state.players,
+            (sessionId, player) =>
+            {
+                RemovePlayer(sessionId);
             }
         );
     }
-    
+
+
+    // =========================================================
+    // SPAWN
+    // =========================================================
+
+    private void SpawnPlayer(
+        string sessionId,
+        Player player,
+        StateCallbackStrategy<MyRoomState> callbacks)
+    {
+        Debug.Log(
+            "Player spawned: " + sessionId
+        );
+
+        GameObject playerObject =
+            Instantiate(playerPrefab);
+
+        players[sessionId] =
+            playerObject;
+
+
+        NetworkPlayer networkPlayer =
+            playerObject.GetComponent<NetworkPlayer>();
+
+        networkPlayer.Initialize(
+            sessionId,
+            room.SessionId
+        );
+
+
+        PlayerController_New playerController =
+            playerObject.GetComponentInChildren<PlayerController_New>();
+
+        PlayerAnimationController animationController =
+            playerObject.GetComponentInChildren<PlayerAnimationController>();
+
+        Transform playerTransform =
+            playerController.transform;
+
+
+        // -----------------------------------------------------
+        // INITIAL POSITION
+        // -----------------------------------------------------
+
+        playerTransform.position =
+            new Vector3(
+                player.x,
+                player.y,
+                player.z
+            );
+
+        playerTransform.rotation =
+            Quaternion.Euler(
+                0f,
+                player.rotY,
+                0f
+            );
+
+
+        // -----------------------------------------------------
+        // OWNER
+        // -----------------------------------------------------
+
+        if (networkPlayer.IsOwner)
+        {
+            cameraController.SetPlayerTarget(
+                playerTransform
+            );
+
+            playerController.SetCameraTransform(
+                playerCamera
+            );
+
+            return;
+        }
+
+
+        // -----------------------------------------------------
+// REMOTE PLAYER
+// -----------------------------------------------------
+
+        networkPlayer.SetTargetTransform(
+            playerTransform.position,
+            playerTransform.rotation
+        );
+
+        animationController.SetNetworkAnimationState(
+            (int)player.animationState
+        );
+
+        animationController.SetAnimationSpeed(
+            player.animationSpeed
+        );
+
+
+        // =====================================================
+        // POSITION
+        // =====================================================
+
+        callbacks.Listen(
+            player,
+            p => p.x,
+            (value, previous) =>
+            {
+                networkPlayer.SetTargetX(value);
+            }
+        );
+
+        callbacks.Listen(
+            player,
+            p => p.y,
+            (value, previous) =>
+            {
+                networkPlayer.SetTargetY(value);
+            }
+        );
+
+        callbacks.Listen(
+            player,
+            p => p.z,
+            (value, previous) =>
+            {
+                networkPlayer.SetTargetZ(value);
+            }
+        );
+
+
+        // =====================================================
+        // ROTATION - Y ONLY
+        // =====================================================
+
+        callbacks.Listen(
+            player,
+            p => p.rotY,
+            (value, previous) =>
+            {
+                networkPlayer.SetTargetRotationY(value);
+            }
+        );
+
+
+        // =====================================================
+        // ANIMATION
+        // =====================================================
+
+        callbacks.Listen(
+            player,
+            p => p.animationState,
+            (value, previous) =>
+            {
+                animationController.SetNetworkAnimationState(
+                    value
+                );
+            }
+        );
+
+        callbacks.Listen(
+            player,
+            p => p.animationSpeed,
+            (value, previous) =>
+            {
+                animationController.SetAnimationSpeed(
+                    value
+                );
+            }
+        );
+    }
+
+
+    // =========================================================
+    // REMOVE PLAYER
+    // =========================================================
+
+    private void RemovePlayer(string sessionId)
+    {
+        if (!players.TryGetValue(
+                sessionId,
+                out GameObject playerObject))
+        {
+            return;
+        }
+
+        Destroy(playerObject);
+
+        players.Remove(sessionId);
+    }
+
+
+    // =========================================================
+    // MOVEMENT
+    // =========================================================
+
     public async void SendMovement(
         Vector3 position,
-        Vector3 rotation,
+        float rotationY)
+    {
+        if (room == null)
+            return;
+
+        await room.Send(
+            "move",
+            new
+            {
+                x = position.x,
+                y = position.y,
+                z = position.z,
+
+                rotY = rotationY
+            }
+        );
+    }
+
+
+    // =========================================================
+    // ANIMATION
+    // =========================================================
+
+    public async void SendAnimation(
         int animationState,
         float animationSpeed)
     {
         if (room == null)
             return;
 
-        await room.Send("move", new
-        {
-            x = position.x,
-            y = position.y,
-            z = position.z,
-
-            rotX = rotation.x,
-            rotY = rotation.y,
-            rotZ = rotation.z,
-
-            animationState = animationState,
-            animationSpeed = animationSpeed
-        });
+        await room.Send(
+            "animation",
+            new
+            {
+                state = animationState,
+                speed = animationSpeed
+            }
+        );
     }
 
-    async void OnDestroy()
+
+    // =========================================================
+    // CLEANUP
+    // =========================================================
+
+    private async void OnDestroy()
     {
         if (room != null)
         {

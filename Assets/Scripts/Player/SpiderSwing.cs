@@ -109,9 +109,7 @@ public class SpiderSwing : MonoBehaviour
 
         colyseusClient?.SendMovement(
             transform.position,
-            transform.eulerAngles,
-            animationController.CurrentAnimationState,
-            animationController.CurrentAnimationSpeed
+            transform.eulerAngles.y
         );
     }
 
